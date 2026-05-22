@@ -1,13 +1,16 @@
 package main
 
+import "math"
+
 type Node struct {
 	next    *Node
 	prev    *Node
 	visited bool
 	credit  int
 	penalty int
-	val     string
-	key     string
+	size    uint32
+	val     any
+	key     any
 }
 
 type DoubleLinkedList struct {
@@ -44,12 +47,14 @@ func (dll *DoubleLinkedList) remove(node *Node) {
 	node.next.prev = node.prev
 	dll.items--
 }
-func (dll *DoubleLinkedList) insert(val string) *Node {
+func (dll *DoubleLinkedList) insert(val string, size uint32) *Node {
+
 	n := &Node{
 		visited: false,
 		val:     val,
 		key:     val,
-		credit:  len(val),
+		size:    size,
+		credit:  int(math.Log2(float64(size))),
 		penalty: 1,
 	}
 
