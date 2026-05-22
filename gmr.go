@@ -1,13 +1,6 @@
 package main
 
-import "fmt"
-
-var (
-	ErrInvalidSize error = fmt.Errorf("item can't fit")
-	ErrNotFound    error = fmt.Errorf("item not found")
-)
-
-type Sieve struct {
+type GMR struct {
 	dll      DoubleLinkedList
 	capacity uint32
 	size     uint32
@@ -21,8 +14,8 @@ type Sieve struct {
 	byteMisses uint32
 }
 
-func NewSieve(cap uint32) *Sieve {
-	s := &Sieve{
+func NewGMR(cap uint32) *GMR {
+	s := &GMR{
 		dll:      NewDLL(),
 		capacity: cap,
 		items:    make(map[string]*Node),
@@ -31,7 +24,7 @@ func NewSieve(cap uint32) *Sieve {
 	return s
 }
 
-func (s *Sieve) GetOrInsert(k string, size uint32) (any, error) {
+func (s *GMR) GetOrInsert(k string, size uint32) (any, error) {
 	if size > s.capacity {
 		return nil, ErrInvalidSize
 	}
@@ -40,7 +33,8 @@ func (s *Sieve) GetOrInsert(k string, size uint32) (any, error) {
 	if exists {
 		s.hits++
 		s.byteHits += node.size
-		node.visited = true
+		node.credit += node.penalty
+		node.penalty = max(1, node.penalty/2)
 		s.dll.moveToHead(node)
 		return node.val, nil
 	}
@@ -49,13 +43,15 @@ func (s *Sieve) GetOrInsert(k string, size uint32) (any, error) {
 
 	return nil, s.Put(k, size)
 }
-func (s *Sieve) Get(k string, size uint32) (any, error) {
+func (s *GMR) Get(k string, size uint32) (any, error) {
+	if size > s.capacity {
+		return nil, ErrInvalidSize
+	}
 	node, exists := s.items[k]
 	// cache hit
 	if exists {
 		s.hits++
 		s.byteHits += node.size
-		node.visited = true
 		s.dll.moveToHead(node)
 		return node.val, nil
 	}
@@ -64,14 +60,15 @@ func (s *Sieve) Get(k string, size uint32) (any, error) {
 	return nil, ErrNotFound
 }
 
-func (s *Sieve) Put(k string, size uint32) error {
+func (s *GMR) Put(k string, size uint32) error {
 	if size > s.capacity {
 		return ErrInvalidSize
 	}
 	// if cache is full
 	for s.size+size > s.capacity {
-		s.Evict()
+		s.EvictByGravity()
 	}
+
 	// insert
 	newNode := s.dll.insert(k, size)
 	s.items[k] = newNode
@@ -79,7 +76,7 @@ func (s *Sieve) Put(k string, size uint32) error {
 	return nil
 }
 
-func (s *Sieve) Evict() uint32 {
+func (s *GMR) EvictByGravity() uint32 {
 	if len(s.items) == 0 {
 		return 0
 	}
@@ -89,8 +86,9 @@ func (s *Sieve) Evict() uint32 {
 		o = s.dll.tail.prev
 
 	}
-	for o.visited == true {
-		o.visited = false
+	for o.credit > 0 {
+		o.credit -= o.penalty
+		o.penalty *= 2
 		o = o.prev
 		// head is a dummy node
 		// wrap around list
@@ -104,7 +102,7 @@ func (s *Sieve) Evict() uint32 {
 
 	deleteKey, ok := o.key.(string)
 	if !ok {
-		panic("invalid key in sieve cache")
+		panic("invalid key on gmr cache")
 	}
 	delete(s.items, deleteKey)
 	return o.size
