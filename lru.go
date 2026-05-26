@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type LRU struct {
 	dll         DoubleLinkedList
 	items       map[string]*Node
@@ -72,7 +74,7 @@ func (lru *LRU) Len() uint32 {
 	return lru.currentSize
 }
 func (lru *LRU) GetName() string {
-	return "LRU"
+	return fmt.Sprintf("LRU_%d", lru.cacheSize)
 }
 
 func (lru *LRU) GetOrInsert(k string, size uint32) (any, error) {

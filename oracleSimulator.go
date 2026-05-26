@@ -9,27 +9,14 @@ import (
 )
 
 func simWithOracle(filename string, caches ...Cache) error {
+
 	f, err := os.OpenFile(filename, os.O_RDONLY, 0o666)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	stat, err := f.Stat()
-	totalBytes := stat.Size()
-	totalEntries := totalBytes / 24
-	printEvery := totalEntries/10 + 1
-
-	sizes := make([]uint32, totalEntries)
-	var totalUniqueBytes uint32 = 0
-	ids := make(map[uint64]struct{})
-
 	for entryIdx := 0; ; entryIdx++ {
-		if entryIdx%int(printEvery) == 0 {
-			percent := (entryIdx * 100) / int(totalEntries)
-			fmt.Printf("\r33[2K\r%d%% done (%d / %d entries)", percent, entryIdx, totalEntries)
-		}
-
 		buf := make([]byte, 24)
 		n, err := f.Read(buf)
 		if err != nil {
@@ -45,15 +32,9 @@ func simWithOracle(filename string, caches ...Cache) error {
 		objSize := binary.LittleEndian.Uint32(buf[12:])
 
 		id := fmt.Sprintf("%d", objId)
-		if _, exists := ids[objId]; !exists {
-			totalUniqueBytes += objSize
-		}
-		ids[objId] = struct{}{}
-
 		for _, cache := range caches {
 			cache.GetOrInsert(id, objSize)
 		}
-		sizes[entryIdx] = objSize
 	}
 
 	// var s uint64 = 0

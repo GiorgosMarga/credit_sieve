@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -52,13 +54,7 @@ func generateFile(s string, numLines int) string {
 	return s
 }
 
-// type Config struct {
-// 	Type      string
-// 	Filename  string
-// 	CacheSize uint32
-// }
-
-var percentages []float64 = []float64{0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30}
+var percentages []float64 = []float64{0.1, 0.5, 1, 5, 10, 20}
 
 func main() {
 	_ = percentages
@@ -93,11 +89,48 @@ func main() {
 	})
 	flag.Parse()
 
+	totalBytes, err := getTotalBytes(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	caches := make([]Cache, 0)
-	caches = append(caches, NewLRU(cacheSize))
-	caches = append(caches, NewGMR(cacheSize))
-	caches = append(caches, NewSieve(cacheSize))
+	for _, percentage := range percentages {
+		c := uint32(float64(totalBytes) * percentage / 100)
+		caches = append(caches, NewLRU(c))
+		caches = append(caches, NewGMR(c))
+		caches = append(caches, NewSieve(c))
+
+	}
 
 	simWithOracle(filename, caches...)
 
+}
+
+func getTotalBytes(filename string) (uint, error) {
+	f, err := os.OpenFile("stats.csv", os.O_RDONLY, 0o666)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	csvReader := csv.NewReader(f)
+	_, err = csvReader.Read()
+	if err != nil {
+		return 0, err
+	}
+	for {
+		row, err := csvReader.Read()
+		if err != nil {
+			return 0, err
+		}
+		name := row[0]
+		if name == strings.Split(filename, ".")[0] {
+			totalBytesStr := row[4]
+			t, err := strconv.ParseUint(totalBytesStr, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+			return uint(t), nil
+		}
+	}
 }

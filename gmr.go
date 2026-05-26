@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 type GMR struct {
 	dll      DoubleLinkedList
@@ -100,7 +103,7 @@ func (s *GMR) EvictByGravity() uint32 {
 }
 
 func (gmr *GMR) GetName() string {
-	return "GMR"
+	return fmt.Sprintf("GMR_%d", gmr.capacity)
 }
 
 func (gmr *GMR) GetHits() uint32 {

@@ -112,7 +112,7 @@ func (s *Sieve) Evict() uint32 {
 	return o.size
 }
 func (s *Sieve) GetName() string {
-	return "SIEVE"
+	return fmt.Sprintf("SIEVE_%d", s.capacity)
 }
 
 func (s *Sieve) GetHits() uint32 {
