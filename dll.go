@@ -8,6 +8,7 @@ type Node struct {
 	visited bool
 	credit  int
 	penalty int
+	reward  int
 	size    uint32
 	val     any
 	key     any
@@ -54,8 +55,9 @@ func (dll *DoubleLinkedList) insert(val string, size uint32) *Node {
 		val:     val,
 		key:     val,
 		size:    size,
-		credit:  int(math.Log2(float64(size))),
+		credit:  0,
 		penalty: 1,
+		reward:  int(math.Log2(float64(size))),
 	}
 
 	dll.head.next.prev = n

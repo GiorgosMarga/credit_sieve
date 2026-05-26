@@ -1,10 +1,13 @@
 package main
 
+import "math"
+
 type GMR struct {
 	dll      DoubleLinkedList
 	capacity uint32
 	size     uint32
 	items    map[string]*Node
+	k        int
 
 	hand *Node
 
@@ -19,6 +22,7 @@ func NewGMR(cap uint32) *GMR {
 		dll:      NewDLL(),
 		capacity: cap,
 		items:    make(map[string]*Node),
+		k:        2,
 	}
 	s.hand = s.dll.tail
 	return s
@@ -33,31 +37,17 @@ func (s *GMR) GetOrInsert(k string, size uint32) (any, error) {
 	if exists {
 		s.hits++
 		s.byteHits += node.size
-		node.credit += node.penalty
-		node.penalty = max(1, node.penalty/2)
+
+		node.credit += int(math.Log2(float64(node.size)))
+		// node.penalty = max(1, node.penalty>>1)
 		s.dll.moveToHead(node)
+
 		return node.val, nil
 	}
 	s.misses++
 	s.byteMisses += size
 
 	return nil, s.Put(k, size)
-}
-func (s *GMR) Get(k string, size uint32) (any, error) {
-	if size > s.capacity {
-		return nil, ErrInvalidSize
-	}
-	node, exists := s.items[k]
-	// cache hit
-	if exists {
-		s.hits++
-		s.byteHits += node.size
-		s.dll.moveToHead(node)
-		return node.val, nil
-	}
-	s.misses++
-	s.byteMisses += node.size
-	return nil, ErrNotFound
 }
 
 func (s *GMR) Put(k string, size uint32) error {
@@ -84,11 +74,12 @@ func (s *GMR) EvictByGravity() uint32 {
 	//tail is a dummy node
 	if o == s.dll.tail || o == s.dll.head {
 		o = s.dll.tail.prev
-
 	}
+
 	for o.credit > 0 {
 		o.credit -= o.penalty
-		o.penalty *= 2
+		o.penalty <<= 1
+
 		o = o.prev
 		// head is a dummy node
 		// wrap around list
@@ -106,4 +97,16 @@ func (s *GMR) EvictByGravity() uint32 {
 	}
 	delete(s.items, deleteKey)
 	return o.size
+}
+
+func (gmr *GMR) GetName() string {
+	return "GMR"
+}
+
+func (gmr *GMR) GetHits() uint32 {
+	return uint32(gmr.hits)
+}
+
+func (gmr *GMR) GetByteHits() uint32 {
+	return gmr.byteHits
 }

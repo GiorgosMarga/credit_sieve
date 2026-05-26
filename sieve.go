@@ -40,8 +40,10 @@ func (s *Sieve) GetOrInsert(k string, size uint32) (any, error) {
 	if exists {
 		s.hits++
 		s.byteHits += node.size
+
 		node.visited = true
 		s.dll.moveToHead(node)
+
 		return node.val, nil
 	}
 	s.misses++
@@ -87,8 +89,8 @@ func (s *Sieve) Evict() uint32 {
 	//tail is a dummy node
 	if o == s.dll.tail || o == s.dll.head {
 		o = s.dll.tail.prev
-
 	}
+
 	for o.visited == true {
 		o.visited = false
 		o = o.prev
@@ -108,4 +110,15 @@ func (s *Sieve) Evict() uint32 {
 	}
 	delete(s.items, deleteKey)
 	return o.size
+}
+func (s *Sieve) GetName() string {
+	return "SIEVE"
+}
+
+func (s *Sieve) GetHits() uint32 {
+	return uint32(s.hits)
+}
+
+func (s *Sieve) GetByteHits() uint32 {
+	return s.byteHits
 }

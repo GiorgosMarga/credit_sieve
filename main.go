@@ -2,11 +2,13 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"math"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -50,8 +52,52 @@ func generateFile(s string, numLines int) string {
 	return s
 }
 
-func main() {
+// type Config struct {
+// 	Type      string
+// 	Filename  string
+// 	CacheSize uint32
+// }
 
-	simWithOracle("meta_reag.oracleGeneral")
+var percentages []float64 = []float64{0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30}
+
+func main() {
+	_ = percentages
+	var (
+		filename  string
+		cacheSize uint32 = 2 * GiB
+	)
+
+	flag.StringVar(&filename, "f", "meta_reag.oracleGeneral", "Cache file to run.")
+	flag.Func("c", "Cache size (kb | mb | gb). Ex. 2gb -> 2 gigabytes.", func(s string) error {
+		if s == "" {
+			panic("invalid cache size")
+		}
+		cacheSizeStr := s[:len(s)-2]
+		size, err := strconv.Atoi(cacheSizeStr)
+		if err != nil {
+			panic(err)
+		}
+		scale := s[len(s)-2:]
+		switch scale {
+		case "kb":
+			cacheSize = uint32(size) * KiB
+		case "mb":
+			cacheSize = uint32(size) * MiB
+		case "gb":
+			cacheSize = uint32(size) * GiB
+		default:
+			panic("invalid scale")
+		}
+		fmt.Println(cacheSize)
+		return nil
+	})
+	flag.Parse()
+
+	caches := make([]Cache, 0)
+	caches = append(caches, NewLRU(cacheSize))
+	caches = append(caches, NewGMR(cacheSize))
+	caches = append(caches, NewSieve(cacheSize))
+
+	simWithOracle(filename, caches...)
 
 }

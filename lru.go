@@ -5,6 +5,8 @@ type LRU struct {
 	items       map[string]*Node
 	cacheSize   uint32
 	currentSize uint32
+	byteHits    uint32
+	hits        uint32
 }
 
 func NewLRU(c uint32) *LRU {
@@ -15,13 +17,17 @@ func NewLRU(c uint32) *LRU {
 		currentSize: 0,
 	}
 }
-func (lru *LRU) Insert(key string, size uint32) {
-	n := lru.dll.insert(key, size)
-	if lru.currentSize+size > lru.cacheSize {
+func (lru *LRU) Insert(key string, size uint32) error {
+	if size > lru.cacheSize {
+		return ErrInvalidSize
+	}
+	for lru.currentSize+size > lru.cacheSize {
 		_, _ = lru.Evict()
 	}
+	n := lru.dll.insert(key, size)
 	lru.items[key] = n
 	lru.currentSize += size
+	return nil
 }
 func (lru *LRU) Get(key string) (any, bool) {
 	n, exists := lru.items[key]
@@ -64,4 +70,27 @@ func (lru *LRU) Evict() (any, any) {
 }
 func (lru *LRU) Len() uint32 {
 	return lru.currentSize
+}
+func (lru *LRU) GetName() string {
+	return "LRU"
+}
+
+func (lru *LRU) GetOrInsert(k string, size uint32) (any, error) {
+	val, hit := lru.Get(k)
+	if hit {
+		lru.byteHits += size
+		lru.hits++
+		return val, nil
+	}
+
+	return nil, lru.Insert(k, size)
+
+}
+
+func (lru *LRU) GetByteHits() uint32 {
+	return lru.byteHits
+}
+
+func (lru *LRU) GetHits() uint32 {
+	return lru.hits
 }
